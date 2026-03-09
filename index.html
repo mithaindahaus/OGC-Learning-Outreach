@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Task Evaluation Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0D0F14; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0D0F14; }
+    ::-webkit-scrollbar-thumb { background: #2A2D3A; border-radius: 3px; }
+    .tag-cb {
+      appearance: none; -webkit-appearance: none;
+      width: 16px; height: 16px; border-radius: 4px;
+      border: 1.5px solid; cursor: pointer; flex-shrink: 0;
+      transition: all 0.15s; position: relative;
+    }
+    .tag-cb:checked::after {
+      content: ''; position: absolute;
+      left: 3px; top: 1px; width: 8px; height: 5px;
+      border-left: 2px solid #0D0F14;
+      border-bottom: 2px solid #0D0F14;
+      transform: rotate(-45deg);
+    }
+    .tag-cb:hover { transform: scale(1.1); }
+    .row-card {
+      background: #13151D; border: 1px solid #1E2130;
+      border-radius: 10px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+      transition: border-color 0.2s;
+    }
+    .row-card:hover { border-color: #2A2D3A; }
+    .bar { height: 6px; border-radius: 3px; transition: width 0.4s ease; }
+    .verdict-box { border-radius: 12px; padding: 18px 20px; border: 1px solid; transition: all 0.4s; }
+    .reset-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: transparent; border: 1px solid #2A2D3A;
+      border-radius: 8px; padding: 8px 16px;
+      color: #5A5D72; font-family: 'DM Mono', monospace;
+      font-size: 12px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .reset-btn:hover { border-color: #E05C5C; color: #E05C5C; background: rgba(224,92,92,0.06); }
+    .reset-btn:active { transform: scale(0.97); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const TAGS = [
+      { id: "meet",     label: "Meet goal",                     color: "#00C896", bg: "rgba(0,200,150,0.08)",  border: "rgba(0,200,150,0.25)" },
+      { id: "learning", label: "Learning but not SRP eligible", color: "#F5A623", bg: "rgba(245,166,35,0.08)", border: "rgba(245,166,35,0.25)" },
+      { id: "not",      label: "Not Learning",                  color: "#E05C5C", bg: "rgba(224,92,92,0.08)",  border: "rgba(224,92,92,0.25)" },
+    ];
+
+    const PRIORITY = ["meet", "learning", "not"];
+    const EMPTY = Array.from({ length: 10 }, () => null);
+
+    function App() {
+      const [selections, setSelections] = useState([...EMPTY]);
+
+      const toggle = (videoIdx, tagId) => {
+        setSelections(prev =>
+          prev.map((sel, i) => i === videoIdx ? (sel === tagId ? null : tagId) : sel)
+        );
+      };
+
+      const reset = () => setSelections([...EMPTY]);
+
+      const counts = TAGS.reduce((acc, t) => {
+        acc[t.id] = selections.filter(s => s === t.id).length;
+        return acc;
+      }, {});
+
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+      const getVerdict = () => {
+        if (total === 0) return null;
+        const max = Math.max(...TAGS.map(t => counts[t.id]));
+        for (const id of PRIORITY) {
+          if (counts[id] === max) return TAGS.find(t => t.id === id);
+        }
+        return null;
+      };
+
+      const verdict = getVerdict();
+      const hasTie = verdict && TAGS.filter(t => t.id !== verdict.id && counts[t.id] === counts[verdict.id]).length > 0;
+
+      return (
+        <div style={{
+          minHeight: "100vh",
+          background: "#0D0F14",
+          fontFamily: "'DM Mono', 'Courier New', monospace",
+          color: "#E8E8F0",
+          padding: "28px 24px",
+        }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 8, height: 36, background: "linear-gradient(180deg,#00C896,#0099FF)", borderRadius: 4 }} />
+                <div>
+                  <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", color: "#F0F0FF" }}>
+                    Task Evaluation
+                  </h1>
+                  <p style={{ fontSize: 11, color: "#5A5D72", marginTop: 2 }}>
+                    10 videos · chọn 1 tag cho mỗi video
+                  </p>
+                </div>
+              </div>
+
+              {/* Reset button */}
+              <button className="reset-btn" onClick={reset}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                  <path d="M3 3v5h5"/>
+                </svg>
+                Reset
+              </button>
+            </div>
+
+            {/* Main 2-column layout */}
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+
+              {/* LEFT: Video list */}
+              <div style={{ flex: "1 1 0", minWidth: 0 }}>
+                {/* Legend */}
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {TAGS.map(t => (
+                    <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 5, background: t.bg, border: `1px solid ${t.border}`, borderRadius: 20, padding: "4px 10px" }}>
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: t.color }} />
+                      <span style={{ fontSize: 10, color: t.color, fontWeight: 500 }}>{t.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const sel = selections[i];
+                    const selTag = sel ? TAGS.find(t => t.id === sel) : null;
+                    return (
+                      <div key={i} className="row-card" style={selTag ? { borderColor: selTag.border } : {}}>
+                        {/* Video number */}
+                        <div style={{ width: 56, flexShrink: 0 }}>
+                          <div style={{ fontSize: 9, color: "#3A3D52", fontWeight: 500, letterSpacing: "0.08em" }}>VIDEO</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Syne',sans-serif", color: selTag ? selTag.color : "#4A4D62", lineHeight: 1 }}>
+                            {String(i + 1).padStart(2, "0")}
+                          </div>
+                        </div>
+
+                        <div style={{ width: 1, height: 32, background: "#1E2130", flexShrink: 0 }} />
+
+                        {/* Checkboxes */}
+                        <div style={{ display: "flex", gap: 16, flex: 1, flexWrap: "wrap", alignItems: "center" }}>
+                          {TAGS.map(t => (
+                            <label key={t.id} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", userSelect: "none" }}>
+                              <input
+                                type="checkbox"
+                                className="tag-cb"
+                                style={{
+                                  borderColor: sel === t.id ? t.color : "#2A2D3A",
+                                  backgroundColor: sel === t.id ? t.color : "transparent",
+                                }}
+                                checked={sel === t.id}
+                                onChange={() => toggle(i, t.id)}
+                              />
+                              <span style={{ fontSize: 12, color: sel === t.id ? t.color : "#4A4D62", transition: "color 0.15s" }}>
+                                {t.label}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+
+                        {/* Status dot */}
+                        <div style={{
+                          width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+                          background: selTag ? selTag.color : "#1E2130",
+                          transition: "background 0.2s",
+                          boxShadow: selTag ? `0 0 8px ${selTag.color}80` : "none"
+                        }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* RIGHT: Stats panel */}
+              <div style={{ width: 255, flexShrink: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+
+                {/* Tag Summary */}
+                <div style={{ background: "#13151D", border: "1px solid #1E2130", borderRadius: 12, padding: "16px 18px" }}>
+                  <div style={{ fontSize: 10, color: "#3A3D52", fontWeight: 500, letterSpacing: "0.08em", marginBottom: 14 }}>TAG SUMMARY</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {TAGS.map(t => {
+                      const pct = (counts[t.id] / 10) * 100;
+                      return (
+                        <div key={t.id}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                            <span style={{ fontSize: 11, color: t.color }}>{t.label}</span>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: counts[t.id] > 0 ? t.color : "#2A2D3A", fontFamily: "'Syne',sans-serif" }}>
+                              {counts[t.id]}
+                              <span style={{ fontSize: 10, color: "#3A3D52", fontWeight: 400 }}>/10</span>
+                            </span>
+                          </div>
+                          <div style={{ background: "#1A1D28", borderRadius: 3, height: 5, overflow: "hidden" }}>
+                            <div className="bar" style={{ width: `${pct}%`, background: t.color, opacity: 0.85 }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1E2130", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#3A3D52" }}>Đã đánh giá</span>
+                    <span style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Syne',sans-serif", color: total === 10 ? "#00C896" : "#E8E8F0" }}>
+                      {total}
+                      <span style={{ fontSize: 11, color: "#3A3D52", fontWeight: 400 }}>/10</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Final Verdict */}
+                <div className="verdict-box" style={{
+                  background: verdict ? verdict.bg : "#13151D",
+                  borderColor: verdict ? verdict.border : "#1E2130",
+                }}>
+                  <div style={{ fontSize: 10, color: "#3A3D52", fontWeight: 500, letterSpacing: "0.08em", marginBottom: 12 }}>FINAL VERDICT</div>
+                  {verdict ? (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
+                        <div style={{ width: 9, height: 9, borderRadius: "50%", background: verdict.color, boxShadow: `0 0 12px ${verdict.color}`, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: verdict.color, lineHeight: 1.3 }}>{verdict.label}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#5A5D72", lineHeight: 1.7 }}>
+                        {counts[verdict.id]} video được tag
+                        {hasTie && (
+                          <div style={{ color: "#F5A623", marginTop: 4 }}>⚠ Bằng nhau → áp dụng thứ tự ưu tiên</div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "#3A3D52", fontStyle: "italic" }}>
+                      Chưa có video nào được đánh giá…
+                    </div>
+                  )}
+                </div>
+
+                {/* Priority order */}
+                <div style={{ background: "#13151D", border: "1px solid #1E2130", borderRadius: 10, padding: "12px 16px" }}>
+                  <div style={{ fontSize: 10, color: "#3A3D52", marginBottom: 10, letterSpacing: "0.08em" }}>THỨ TỰ ƯU TIÊN</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                    {TAGS.map((t, idx) => (
+                      <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 10, color: "#3A3D52", width: 14 }}>{idx + 1}.</span>
+                        <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.color }} />
+                        <span style={{ fontSize: 11, color: "#5A5D72" }}>{t.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
